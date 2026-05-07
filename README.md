@@ -1,88 +1,96 @@
-# Breast Cancer Survival Analysis
+# Breast Cancer Survival Analysis 📊
 
-## 📊 Project Overview
+## Project Overview
+This project focuses on the survival analysis of breast cancer patients using the SEER (Surveillance, Epidemiology, and End Results) database.
 
-This project analyzes breast cancer patient survival using statistical methods and interactive dashboards.
+The objective is to identify key clinical, pathological, and biological factors associated with patient survival and to evaluate how their effects evolve over time using both classical and extended survival models.
 
-The goal is to identify key factors affecting survival and to present insights through both:
-
-* a **Power BI dashboard**
-* a **statistical analysis in R**
+The analysis combines statistical modeling in R with an interactive Power BI dashboard for exploratory data visualization.
 
 ---
 
 ## 🎯 Objectives
-
-* Analyze survival patterns of breast cancer patients
-* Identify significant predictors of survival
-* Compare different statistical approaches (Kaplan-Meier, Cox model)
-* Build an interactive dashboard for data exploration
+- To analyze survival patterns in breast cancer patients
+- To identify significant prognostic factors affecting survival
+- To compare non-parametric and semi-parametric survival methods
+- To assess the validity of the proportional hazards assumption
+- To model time-dependent effects when necessary
+- To provide an interactive tool for data exploration (Power BI)
 
 ---
 
 ## 📁 Dataset
+The dataset is derived from the SEER program (National Cancer Institute, USA) and includes 4024 patients diagnosed with invasive breast cancer between 2006 and 2010.
 
-The dataset is based on the **SEER (Surveillance, Epidemiology, and End Results)** program.
+It contains:
 
-It includes:
+- **Demographic variables**: age at diagnosis, ethnicity, marital status  
+- **Clinical variables**: tumor size, TNM staging, AJCC stage  
+- **Pathological variables**: tumor grade, lymph node involvement  
+- **Biomarkers**: estrogen and progesterone receptor status  
+- **Survival outcome**: survival time (months) and event indicator  
 
-* Demographic variables (age, ethnicity, marital status)
-* Clinical variables (tumor size, stage, lymph nodes)
-* Biomarkers (estrogen, progesterone)
-* Survival time and event indicator
+A derived variable, **LODDS (log-odds of positive lymph nodes)**, is introduced to better capture lymph node involvement.
 
 ---
 
 ## 🧪 Methods
 
+### Exploratory Analysis
+- Summary statistics  
+- Correlation analysis  
+- Group comparisons (event vs. non-event)
+
 ### Survival Analysis
+- Kaplan-Meier estimator  
+- Log-rank tests for group comparisons  
 
-* Kaplan-Meier estimator
-* Log-rank test
+### Regression Modeling
+- Univariate Cox proportional hazards models  
+- Multivariate Cox regression  
+- Hierarchical model building strategy  
 
-### Regression Models
-
-* Cox proportional hazards model
-* Multivariate Cox regression
-* Stratified Cox model
-* Time-varying effects
+### Model Extensions
+- Cox stratified models (for non-proportional hazards)  
+- Time-varying covariate effects (for progesterone receptor)  
+- Assessment of proportional hazards assumption (Schoenfeld residuals)
 
 ### Feature Engineering
-
-* LODDS (log-odds of positive lymph nodes)
+- LODDS: log-odds transformation of lymph node status  
 
 ---
 
 ## 📈 Key Findings
-
-* Lymph node involvement (LODDS) is one of the strongest predictors of survival
-* Hormonal receptors (estrogen, progesterone) significantly affect prognosis
-* The proportional hazards assumption is not always satisfied
-* Time-varying effects improve model interpretation
+- Lymph node involvement (LODDS) is one of the strongest independent prognostic factors for survival.  
+- Tumor stage, histological grade, and tumor size are strongly associated with increased mortality risk.  
+- Hormonal receptors (estrogen and progesterone) are associated with significantly better prognosis.  
+- The proportional hazards assumption is violated for hormonal receptors, indicating time-dependent effects.  
+- Modeling time-varying effects improves interpretability and clinical realism of the Cox model.  
+- Stratification and extended Cox models provide a better representation of survival dynamics compared to the standard model.  
 
 ---
 
 ## 📊 Dashboard
+The Power BI dashboard allows interactive exploration of:
 
-The Power BI dashboard provides:
-
-* Interactive filtering (e.g., estrogen status)
-* Survival rate comparisons
-* Patient distribution analysis
+- Survival differences across clinical subgroups  
+- Hormonal receptor status and survival outcomes  
+- Distribution of key clinical variables  
+- Patient-level filtering and stratification  
 
 ---
 
 ## 🛠 Tools & Technologies
-
-* R (survival, survminer, tidyverse)
-* Power BI
+- R (survival, survminer, tidyverse, gtsummary, pheatmap)  
+- Power BI  
+- Statistical methods: Kaplan-Meier, Cox models, time-dependent Cox models  
 
 ---
 
 ## 📌 Notes
+This project was developed as an applied statistical exercise in survival analysis, focusing on:
 
-This project was developed as a self-learning exercise to improve:
-
-* data analysis skills
-* survival modeling
-* data visualization with Power BI
+- real-world medical data modeling  
+- handling of non-proportional hazards  
+- model selection and interpretation in clinical contexts  
+- integration of statistical analysis and data visualization  
