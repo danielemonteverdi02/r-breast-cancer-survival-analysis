@@ -1,0 +1,1048 @@
+---
+title: "Breast Cancer Survival Analysis"
+author: "Daniele Monteverdi"
+date: "07-05-2026"
+output: 
+  html_document: 
+    toc: true
+    number_sections: true
+    df_print: tibble
+    highlight: haddock
+    theme: readable
+editor_options: 
+  chunk_output_type: console
+---
+
+<style>
+body {
+  font-family: Times New Roman, sans-serif;
+  font-size: 18px;
+}
+
+h1.title, .author, .date {
+  text-align: center;
+  font-size: 24px;
+}
+
+h1 {
+  text-align: left; 
+  font-size: 24px; 
+}
+
+h2 {
+  font-size: 20px;
+  text-align: left;
+}
+
+h3 {
+  font-size: 22px;
+  text-align: left;
+}
+
+pre, code {
+  font-family: "Courier New", monospace;
+  font-size: 18px;
+}
+</style>
+
+# **Abstract**
+
+Il tumore al seno rappresenta una delle principali sfide sanitarie a livello globale ed è la neoplasia più frequentemente diagnosticata tra le donne, oltre a costituire una delle principali cause di mortalità oncologica.
+
+I dati utilizzati in questo studio derivano dal programma SEER (Surveillance, Epidemiology, and End Results), un sistema di registri oncologici gestito dal National Cancer Institute degli Stati Uniti, che raccoglie informazioni dettagliate su incidenza, caratteristiche cliniche e sopravvivenza dei pazienti oncologici. Il dataset analizzato include 4024 pazienti con carcinoma mammario invasivo diagnosticato tra il 2006 e il 2010.
+
+In questo contesto, l’analisi di sopravvivenza costituisce uno strumento statistico essenziale per studiare il tempo fino al verificarsi di un evento di interesse, come il decesso. In particolare, questo lavoro si propone di analizzare la sopravvivenza dei pazienti affetti da tumore al seno utilizzando metodi non parametrici, come lo stimatore di Kaplan-Meier, e modelli semiparametrici, come la regressione di Cox, al fine di valutare l’effetto dei principali fattori clinici, patologici e biologici sulla sopravvivenza.
+
+I risultati dell’analisi mostrano una sopravvivenza complessivamente elevata nei primi anni di follow-up, con una progressiva riduzione nel lungo periodo fino a circa il 79% a 100 mesi. Le curve di Kaplan-Meier evidenziano differenze significative tra i sottogruppi clinici: la sopravvivenza diminuisce all’aumentare dello stadio tumorale e del grado istologico, ed è significativamente più elevata nelle pazienti con recettori estrogenici e progesteronici positivi. Inoltre, si osservano differenze prognostiche anche in relazione all’etnia.
+
+Nel modello di regressione di Cox, i principali fattori associati a un aumento del rischio di morte risultano essere l’età alla diagnosi, lo stadio tumorale, il grado istologico e il coinvolgimento linfonodale, misurato tramite LODDS, che emerge come uno dei predittori più rilevanti. I recettori ormonali mostrano invece un effetto protettivo significativo.
+
+L’analisi diagnostica evidenzia una violazione dell’ipotesi di proporzionalità degli hazard per i recettori ormonali, che ha portato all’estensione del modello mediante stratificazione e introduzione di effetti tempo-dipendenti. Il modello finale selezionato, stratificato per estrogeni e con effetto tempo-dipendente per il progesterone, mostra una migliore aderenza ai dati e una maggiore coerenza clinica.
+
+Nel complesso, lo studio conferma il ruolo centrale dei fattori clinico-patologici e biologici nella prognosi del carcinoma mammario e mette in evidenza la necessità di modelli flessibili per descrivere adeguatamente l’evoluzione del rischio nel tempo.
+
+# **Introduzione**
+
+## **Tumore al seno**
+
+Il tumore al seno è una delle principali sfide sanitarie a livello globale, dato che la neoplasia più frequentemente diagnosticata tra le donne è una delle principali cause di mortalità oncologica, nonostante i progressi nella diagnosi precoce e nelle terapie abbiano portato ad una riduzione della mortalità negli ultimi decenni [1,2]. Secondo recenti stime internazionali, esso rappresenta l'11% di tutte le diagnosi di cancro, con oltre 2,3 milioni di nuovi casi ogni anno [1].
+
+Negli Stati Uniti, il tumore al seno è il tumore più comune nella popolazione femminile, escludendo i tumori della pelle. Si stima che circa una donna su otto sviluppi questa patologia nel corso della vita, con centinaia di migliaia di nuovi casi diagnosticati ogni anno [1]. 
+
+L'insorgenza e la progressione del tumore al seno sono influenzate da una combinazione complessa di fattori genetici, ormonali e ambientali. Tra i principali fattori di rischio si annoverano l'età, la storia familiare, l'esposizione agli ormoni e alcune abitudini di vita, come il consumo di alcool e l'obesità [3]. Dal punto di vista prognostico, variabili cliniche come la dimensione del tumore, il coinvolgimento dei linfonodi e lo stadio della malattia sono fondamentali per la sopravvivenza dei pazienti [4]. Inoltre, biomarcatori come lo stato dei recettori per estrogeni e progesterone rivestono un ruolo cruciale sia nella prognosi sia nella scelta del trattamento.
+
+## **Analisi di sopravvivenza**
+
+L'**analisi di sopravvivenza** è una branca della statistica che si occupa dello studio del tempo intercorrente tra un ben definito **tempo origine** e il verificarsi di un **evento di interesse**. Questo tipo di analisi è particolarmente diffuso in ambito medico, in cui si è spesso interessati al tempo (**tempo di sopravvivenza**) in cui si verifica il decesso del paziente o alla recidiva di una malattia, e l'obiettivo fondamentale è quello di identificare i possibili fattori che influenzano il tempo di sopravvivenza dei pazienti [10]. 
+
+I dati di sopravvivenza presentano una caratteristica distintiva: la **censura**. La censura si verifica quando l'evento di interesse non è osservato per alcuni soggetti durante il periodo di **follow-up**, cioè il periodo di osservazione dei pazienti a partire da un evento origine (ad esempio la diadnosi) fino al verificarsi dell'evento di interesse (ad esmpio il decesso, recidiva). Questo può accadere, ad esempio, perché il paziente è ancora vivo alla fine del follow-up oppure perché è stato perso al follow-up, cioè non è più osservabile fino al termine dello studio.
+Nel contesto dell'analisi di sopravvivenza si considera tipicamente la **censura a destra**, in cui non si conosce il tempo esatto di insorgenza dell'evento, ma si sa che esso non è avvenuto fino all'ultimo tempo osservato.
+Un punto fondamentale dell'analisi di sopravvivenza è l'assunzione di **censura non informativa**, la quale garantisce che le stime delle funzioni di sopravvivenza non siano distorte. 
+Questa assunzione implica che il meccanismo di censura sia indipendente dal processo di sopravvivenza, per cui la probabilità che un individuo venga censurato non dipende dalla sua reale probabilità di subire l'evento di interesse. Ad esempio, un paziente perso al follow-up non deve avere un rischio sistematicamente diverso, né maggiore né minore, rispetto ad un paziente che continua ad essere osservato. 
+
+Un ulteriore aspetto che rende inappropriati i metodi statistici classici è la tipica asimmetria positiva dei tempi di sopravvivenza, quindi non è possibile assumerne la normalità.
+
+Quindi, per ogni soggetto si dispone di due informazioni: una variabile continua che rappresenta il tempo di sopravvivenza e una variabile indicatrice dell'evento, che assume valore 1 se l'evento si verifica e 0 in caso di censura.
+
+### **Funzione di Sopravvivenza e Hazard**
+
+Nell'analisi dei dati di sopravvivenza ci sono due concetti, due funzioni di particolare interesse: la **funzione di sopravvivenza** (*survivor function*) e l'**hazard** (*hazard function*). 
+
+Il tempo di sopravvivenza per un paziente, $t$, può essere considerato come un valore della variabile casuale $T$, variabile non negativa associata con il tempo di sopravvivenza. T ha una **funzione di densità di probabilità** $f(t)$, e la sua **funzione di ripartizione** è data da
+
+$$
+F(t) = \Pr(T < t) = \int_0^t f(x)\, dx
+$$
+e rappresenta la probabilità che il tempo di sopravvivenza sia minore di un qualche valore di $t$.
+
+La **funzione di sopravvivenza**, $S(t)$, è la probabilità che il tempo di sopravvivenza sia maggiore o uguale a $t$, quindi
+
+$$
+S(t) = \Pr(T>=t) = 1 - F(t) = \int_t^\infty f(x)\, dx
+$$
+
+è la probabilità per un individuo di sopravvivere almeno fino a t. 
+
+L’**hazard function** rappresenta il rischio istantaneo che un individuo sperimenti l’evento di interesse al tempo $t$, condizionatamente al fatto che sia sopravvissuto fino a quel momento. Essa descrive quindi la velocità con cui gli eventi si verificano nel tempo tra gli individui ancora a rischio. 
+
+$$
+h(t) = \lim_{\Delta t \to 0} 
+\frac{\Pr(t \le T < t + \Delta t \mid T \ge t)}{\Delta t} 
+= \frac{f(t)}{S(t)}
+$$
+
+# **Metodi**
+
+Sulla base di quanto esposto, vengono presentate adesso le principali tecniche utilizzate per l’analisi dei dati di sopravvivenza sul dataset in esame.
+
+## **Metodi non parametrici**
+
+Come detto precedentemente, i dati di sopravvivenza vengono tipicamente sintetizzati attraverso la stima della funzione di sopravvivenza e della funzione di hazard. In particolare, per la stima della funzione di sopravvivenza si ricorre spesso a **metodi non parametrici**, i quali non richiedono di una specifica forma parametrica per la distribuzione del tempo di sopravvivenza.
+
+### **Kaplan-Meier**
+
+In questo contesto, uno degli strumenti più utilizzati è lo **stimatore Kaplan-Meier**, o stimatore del prodotto limite. Tale metodo consente di ottenere una stima della funzione di sopravvivenza a partire dai dati osservati, tenendo conto della presenza di osservazioni censurate. 
+Lo stimatore Kaplan-Meier si basa sull'ordinamento del tempo di evento osservato e sulla costruzione della $S(t)$ come 
+
+$$
+\hat{S}(t) = \prod_{j=1}^{k} \left(1 - \frac{d_j}{n_j}\right) = \prod_{j=1}^{k} \left(\frac{n_j - d_j}{n_j}\right)
+$$
+
+dove $dj$ rappresenta il numero di morti in $tj$, che è il tempo di morte j-esimo, mentre $nj$ rappresenta gli individui sopravvissuti fino a $tj$. Si assume che le morti avvengano in maniera indipendente nel campione. 
+
+Dal punto di vista grafico, la stima K-M è un grafico "a gradini", in cui le probabilità di sopravvivenza stimate sono costanti tra tempi di morte adiacenti e diminuisce ad ogni tempo di morte. 
+
+### **Log-Rank test**
+
+Il modo più immediato per confrontare i tempi di sopravvivenza tra due o più gruppi di individui è il grafico che contiene le rispettive stime delle due funzioni di sopravvivenza sullo stesso asse. 
+
+Esistono dei metodi statistici che consentono di verificare la differenza tra due gruppi in termini di sopravvivenza, è uno di questi è il **test Log-Rank** che saggia il seguente sistema di ipotesi:
+
+$$
+\begin{cases}
+H_0: \; S_1(t) = S_2(t) \\
+H_1: \; S_1(t) \neq S_2(t)
+\end{cases}
+$$
+
+La statistica test utilizzata è la seguente:
+
+$$
+W = \frac{\left(\sum_{j=1}^{k} (O_{1j} - E_{1j})\right)^2}
+{\sum_{j=1}^{k} V_{1j}}
+$$
+Il test si basa sul confronto tra il **numero osservato di eventi** ($O_{1j}$ rappresenta il numero di eventi osservati nel gruppo 1) al tempo $tj$ e il **numero di eventi attesi** in ciascun gruppo ($E_{1j}$ indica il numero di eventi attesi nello stesso gruppo) al tempo $tj$, assumendo che le funzioni di sopravvivenza dei gruppi siano uguali. Il termine al denominatore rappresenta la varianza della differenza tra valori osservati e attesi. 
+
+Sotto $H_0$, la statistica test converge asintoticamente ad una distribuzione chi-quadro con un grado di libertà nel caso di due gruppi. Valori elevati di $W$ portano al rigetto dell'ipotesi nulla, suggerendo che le curve differiscono in modo statisticamente significativo. 
+
+## **Regressione di Cox**
+
+I metodi considerati precedentemente sono utili nell'analisi di un singolo campione di dati di sopravvivenza o nel confronto dei tempi di sopravvivenza di due o più gruppi. 
+
+Tuttavia, mediante un modello regressivo applicato ai dati di sopravvivenza è possibile esplorare come la sopravvivenza dei pazienti dipende dai valori di una o più **variabili esplicative** considerate per ogni paziente al tempo di origine. 
+Un modello regressivo consente di determinare quali combinazioni di esplicative influenzano l'hazard function e inoltre consente di ottenere una stima dell'hazard function. Il modello regressivo per i dati di sopravvivenza è il **modello di Cox** (Cox regression model o proportional hazrds model), modello che è in grado di considerare i dati censurati. 
+
+Il modello di Cox si basa sull'**assunzione di proporzionalità dei rischi**, per cui non c'è alcuna assunzione sulla distribuzione per i tempi di sopravvivenza. Il modello di Cox è quindi un modello *semi-parametrico*. 
+La variabile risposta nel modello di Cox è l'hazard function $h(t)$, cioé il rischio istantaneo che un individuo ha di sperimentare l'evento di interesse al tempo $t$, dato che è sopravvissuto fino al tempo $t$. 
+Di seguito l'equazione del modello:
+
+$$
+h(t \mid X) = h_0(t)\,\exp(\beta_1 X_1 + \beta_2 X_2 + \dots + \beta_p X_p) = h_0(t)\,\exp(\beta^\top X)
+$$
+
+in cui $h_0(t)$ è l'hazard function per un individuo i cui valori di tutte le esplicative sono pari a 0 ed è la **funzione hazard baseline** (baseline hazard function), mentre $exp(\beta X)$ rappresenta l'effetto delle esplicative sul rischio. 
+
+Quindi il modello di Cox descrive il rischio di occorrenza dell'evento di interesse come il prodotto tra l'hazard baseline, dipendente dal tempo e per il quale non viene specificata la forma funzionale, e una componente esponenziale che incorpora l'effetto delle covariate. In questo modo le esplicative agiscono moltiplicativamente sul rischio, consentendo di valutare il loro impatto mediante gli **hazard ratio**, cioé il rapporto di rischi di due individui/gruppi. L'assunzione di proporzionalità del modello riguarda proprio gli hazard ratio, che devono essere costanti nel tempo, cioé l'effetto della variabile non cambia nel tempo. 
+
+Per quanto concerne la stima delle componenti del modello, si possono stimare le due componenti, parametri e hazard baseline, separatamente. In particolare, prima si stimano i parametri e queste stime vengono utilizzate per stimare l'hazard baseline. 
+I coefficienti del modello di Cox, i parametri ignoti del modello, vengono stimati mediante il **metodo della massima verosimiglianza**. Tuttavia, dato che l'hazard baseline non è noto, non si utilizza una full likelihhod, una verosimiglianza completa, ma una **partial likelihhood** (verosimiglianza parziale):
+
+$$
+L(\beta) = \prod_{i \in D} \frac{\exp(\beta^\top X_i)}
+{\sum_{j \in R(t_i)} \exp(\beta^\top X_j)}
+$$
+
+dove $D$ è l'insieme degli individui che hanno avuto l'evento, $R(t)$ rappresenta l'insieme degli individui a rischio al tempo $t$. Il numeratore rappresenta il contributo dell'individuo che ha avuto l'evento, mentre il denominatore somma i contributi di tutti gli individui a rischio in quel momento. 
+
+Poiché la partial likelihhood non è in forma lineare, è più conveniente lavorare con la log-verosimiglianza:
+
+$$
+\ell(\beta) = \sum_{i \in D} \left[ \beta^\top X_i - \log \left( \sum_{j \in R(t_i)} \exp(\beta^\top X_j) \right) \right]
+$$
+
+La massimizzazione della log-verosimiglianza non ha soluzione chiusa, quindi si utilizza il **metodo di Newton-Paphson**: 
+
+$$
+\beta^{(k+1)} = \beta^{(k)} - \left[ H(\beta^{(k)}) \right]^{-1} U(\beta^{(k)})
+$$
+
+dove $U(β)$ è la score function, cioé il gradiente della log-verosimiglianza, $H(β)$ è matrice hessiana mentre 
+$β(k)$ è la stima del parametro al passo $k$. L'algoritmo parte da un valore iniziale di $β$, calcola quanto si è "distanti" dal massimo (score), usa la curvatura (hessiana) per aggiornare la stima e ripete il processo fino a convergenza. 
+
+### **Residui**
+
+I residui di Schoenfeld costituiscono uno strumento diagnostico importante del modello di Cox, in particolare per la **verifica dell'assunzione di proporzionalità degli hazard**. 
+Per ogni tempo di evento osservato $t_i$ e per ciascuna covariata $X_j$, il residuo di Schoenfeld è definito come la differenza tra il valore osservato della covariata per l'individuo che sperimento l'evento e il valore atteso della stessa covariata, calcolato rispetto all'insieme degli individui ancora a rischio in quel momento (**risk set**).
+Formalmente, il residuo di Schoenfeld per la covariata $j$ al tempo $t_i$ è dato da:
+
+$$
+r_{ij} = x_{ij} - E(X_j \mid t_i)
+$$
+
+dove il valore atteso è:
+
+$$
+E(X_j \mid t_i) = \frac{\sum_{l \in R(t_i)} x_{lj} \exp(\beta^\top x_l)}{\sum_{l \in R(t_i)} \exp(\beta^\top x_l)}
+$$
+
+in cui $x_{ij}$ è il valore osservato della covariata per l'individuo che presenta l'evento, $R(t_i)$ è il risk set al tempo $t_i$ e $\beta$ è il vettore dei coefficienti stimati dal modello di Cox.
+
+Questi residui sono detti **non scalati** e sono definiti solo nei tempi in cui si verifica un evento. Essi non rappresentano una differenza tra valore osservato e valore predetto nella variabile risposta, riflettono il contributo delle covariate alla stima dei coefficienti del modello.
+Per finalità diagnostiche, si utilizzano i **residui di Shoenfeld scalati**, ottenuti a partire dai residui non scalati mediante una trasformazione che tiene conto della **matrice di varianza e covarianza** stimata dei coefficienti del modello. I residui scalati possono essere espressi come: 
+
+$$
+r_i^* = \hat{\Sigma} \, r_i
+$$
+
+dove $r_i$ è il vettore dei residui di Schoenfeld non scalati al tempo $t_i$ e $\hat{\Sigma}$ è la matrice di varianza e covarianza stimata dei coefficienti. 
+L'assunzione di proporzionalità degli hazard viene verificata analizzando l'andamento dei residui scalati in funzione del tempo. Se tale assunzione è soddisfatta, i residui non devono mostrare alcuna tendenza sistematica e devono distribuirsi casualmente attorno allo zero. Al contrario, la presenza di tren suggerisce che l'effetto della covariata varia nel tempo.
+
+### **Cox stratificato**
+
+Il modello di **Cox stratificato** è un'estensione del modello di Cox che permette di tenere conto della presenza di eterogeneità tra gruppi di individui, consentendo all'hazard baseline di variare tra strati definiti da una o più variabili categoriali. In questo modello, l'hazard per un individuo al tempo $t$, condizionato alle covariate $X$ e allo strato $S$, è espesso come:
+
+$$
+h(t \mid X, S) = h_{0S}(t)\,\exp(\beta^\top X)
+$$
+
+dove  $h_{0S}(t)$ è l'hazard baseline specifico per ciascun strato.
+
+Quindi, a differenza del modello di Cox standard, non si assume un'unica hazard baseline comune a tutti i soggetti ma una baseline diversa per ciascun gruppo. Tuttavia, si mantiene l'ipotesi che gli effetti delle covariate incluse nel modello siano costanti tra gli strati. 
+
+La stima dei parametri avviene una verosimiglianza parziale stratificata, che considera confronti tra individui appartenenti allo stesso strato. Questo approccio consente di controllare l'effetto di una variabile senza doverne stimare esplicitamente il coefficiente, motivo per cui la variabile di stratificazione non compare direttamente nel termine esponenziale del modello. 
+Il modello stratificato risulta utile quando una variabile influisce fortemente sulla forma dell'hazard baseline oppure quando non si è interessati a stimarne l'effetto, ma è comunque necessario tenerne conto per ottenere stime corrette degli altri coefficienti. 
+
+### **Modello di Cox con effetti tempo-dipendenti**
+
+Il modello di Cox proporzionale assume che l'effetto delle covariate sia costante nel tempo. Tuttavia, quando questa assunzione non è soddisfatta, è possibile estendere il modello introducendo **coefficienti tempo-dipendenti**. 
+In questo caso l'hazard può essere espresso come:
+
+$$
+h(t\mid X) = h_0(t)\exp\big(\beta(t) X\big)
+$$
+
+dove il coefficiente $\beta(t)$ è funzione del tempo e descrive un effetto della covariata che varia durante il follow-up.
+Operativamente, questa dipendenza dal tempo viene spesso modellata introducendo un termine di interazione tra la covariata e una funzione del tempo $g(t)$:
+
+$$
+h(t \mid X) = h_0(t)\exp\big(\beta_1 X + \beta_2 X \cdot g(t)\big)
+$$
+
+In tale formulazione, $\beta_1$ rappresenta l’effetto iniziale della covariata e $\beta_1$ descrive come tale effetto evolve nel tempo.
+Questo approccio consente di modellare esplicitamente la violazione dell’ipotesi di rischi proporzionali, permettendo una descrizione più flessibile dell’effetto delle covariate sulla sopravvivenza.
+
+### **Selezione del modello**
+
+La selezione del modello di Cox si basa sulla necessità di bilanciare accuratezza predittiva e parsimonia del modello. In pratica, si vogliono includere solo le covariate che forniscono un contributo significativo alla spiegazione del rischio di evento, evitando di sovraccaricare il modello con variabili non informative.
+
+Uno degli strumenti più utilizzati per confrontare modelli alternativi è il Criterio di Informazione di Akaike (**AIC**), definito come:
+
+$$
+AIC = -2 \cdot \log(L) + 2k
+$$
+
+dove $L$ è la funzione di verosimiglianza massima e $k$ è il numero di parametri stimati. L’AIC penalizza i modelli complessi, favorendo quelli che rappresentano un buon compromesso tra adattamento ai dati e semplicità.
+
+La selezione del modello può essere effettuata manualmente, confrontando diversi modelli con diverse combinazioni di covariate. Il modello finale scelto è quello con AIC più basso, considerato il più parsimonioso pur mantenendo una buona capacità predittiva. 
+
+# **Dati**
+
+Il dataset utilizzato in questo studio deriva dal programma **SEER** (Surveillance, Epidemiology, and End Results) gestito dal National Cancer Institute, che fornisce dati epidemiologici relativi ai tumori negli Stati Uniti [5].
+
+In particolare, i dati provengono dall'aggiornamento di novembre 2017 del database SEER e includono pazienti di sesso femminile affetti da carcinoma mammario invasivo, diagnosticato tra il 2006 e il 2010 [4,6]. Sono stati esclusi i pazienti con informazioni mancanti relative alla dimensione del tumore, al numero di linfonodi esaminati e positivi, nonché i pazienti con un tempo di sopravvivenza inferiore a un mese. Il campione finale analizzato comprende 4024 pazienti. 
+
+Il dataset è stato reso disponibile pubblicamente tramite piattaforma IEEE Dataport [8], ed include le seguenti variabili:
+
+-**Età alla diagnosi**: rappresenta l'età del paziente alla diagnosi del tumore, espressa in anni
+
+-**Etnia**: variabile categoriale che identifica il gruppo etnico della paziente, indipendentemente dall'etina ispanica
+
+-**Stato civile**: indica lo stato civile della paziente al momento 
+della diagnosi
+
+-**Stadio T**: indica la dimesnione e l'estensione locale del tumore 
+primario secondo la classificazione AJCC (sesta edizione)
+
+-**Stadio N**: descrive il coinvolgimento dei linfonodi regionali, in particolare N1 indica un coinvolgimento limitato, N2 moderato e N3 esteso
+
+-**Stadio AJCC complessivo**: rappresenta lo stadio globale della malattia secondo il sistema TNM, combinando informazioni su tumore, linfonodi e metastasi
+
+-**Grado istologico**: indica il gradi di differenziazione delle cellule tumorali, in particolare Grado I indica che è ben differeziato (meno aggressivo), Grado II moderatamente differeziato, Grado III scarsamente differenziato e Grado IV indifferenziato (più aggressivo)
+
+-**Stadio A** (SEER historic stage): classificazione semplificata dello stadio, in particolare Regional indica una diffusione ai tessuti circostanti o ai linfonodi regionali, mentre Distant indica la presenza di metastasi
+
+-**Dimensione del tumore**: misura della dimensione del tumore in millimetri
+
+-**Recettori per estrogeni**: presenza di ricettori per estrogeni nel tumore (Positivo o Negativo)
+
+-**Recettori per progesterone**: presenza di recettori per progesterone (Positivo o Negativo)
+
+-**Linfonodi esaminati**: numero totale di linfonodi regionali rimossi ed esaminati dal patologo
+
+-**Linfonodi positivi**: numero di linfonodi che presentano metastasi
+
+-**Tempo di sopravvivenza**: tempo, espresso in mesi, tra la diagnosi e l'evento di interesse (morte) 
+
+-**Stato**: indica lo stato del paziente al termine del follow-up (Alive, Dead)
+
+Inoltre, una variabile molto utilizzata in oncologia [6,7] è il **log-odds** dei linfonodi positivi, il **LODDS**, definito come:
+
+$$
+\mathrm{LODDS} = \log\left(\frac{\text{Linfonodi positivi} + 0.5}{\text{Linfonodi esaminati} - \text{Linfonodi positivi} + 0.5}\right)
+$$
+
+Questa misura è spesso più stabile del semplice rapporto tra linfonodi positivi e linfonodi esaminati, specialmente quando pochi linfonodi sono stati esaminati o quando il rapporto vale 0 o 1. 
+Valori negativi dell'LODDS corrispondono ad una prognosi più favorevole, mentre valori prossimi a 0 o positivi riflettono una maggiore proporzione di linfonodi metastatici e quindi una prognosi peggiore.
+
+I dati sono distribuiti sotto licenza Creative Commons Attribution 4.0 International License, che ne consente l’utilizzo e la condivisione a condizione di citarne la fonte originale.
+
+# **Analisi**
+
+```{r Setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+## **Caricamento dataset e operazioni sulle colonne**
+
+```{r Librerie necessarie}
+
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(pheatmap)
+library(gtsummary)
+library(patchwork)
+library(survival)
+library(survminer)
+
+```
+
+```{r Caricamento del dataset, include = FALSE} 
+
+#Carico il dataset
+
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+dati <- read_delim("Breast Cancer Dataset.csv", delim = ";",
+                    escape_double = FALSE, trim_ws = TRUE)
+head(dati)
+
+```
+
+```{r Operazioni sulle colonne}
+
+#Operazioni sulle colonne
+
+dati <- dati %>% rename(Età_diagnosi = Age,
+                        Etnia = Race,
+                        Stato_civile = `Marital Status`,
+                        Stadio_T = `T Stage`,
+                        Stadio_N = `N Stage`,
+                        Stadio_ajcc = `6th Stage`,
+                        Grado_istologico = `Grade`,
+                        Stadio_A = `A Stage`,
+                        Dimensione_tumore = `Tumor Size`,
+                        Estrogeni = `Estrogen Status`,
+                        Progesterone = `Progesterone Status`,
+                        Linfonodi_esam = `Regional Node Examined`,
+                        Linfonodi_positivi = `Reginol Node Positive`,
+                        Tempo_sopravv = `Survival Months`,
+                        Evento = Status)
+
+dati <- dati %>% mutate(across(where(is.character), as.factor))
+str(dati)
+
+dati <- dati %>% mutate(
+  Etnia = dplyr::recode(Etnia, 
+                 "Black" = "Nera",
+                 "Other (American Indian/AK Native, Asian/Pacific Islander)" = "Altro",
+                 "White" = "Bianca"),
+  Stato_civile = dplyr::recode(Stato_civile,
+                        "Divorced" = "Divorziata",
+                        "Married (including common law)" = "Sposata",
+                        "Separated" = "Separata",
+                        "Single (never married)" = "Single",
+                        "Widowed" = "Vedova"),
+  Grado_istologico = dplyr::recode(Grado_istologico,
+                            "Moderately differentiated; Grade II" = "Grado II",
+                            "Poorly differentiated; Grade III" = "Grado III",
+                            "Undifferentiated; anaplastic; Grade IV" = "Grado IV",
+                            "Well differentiated; Grade I" = "Grado I"),
+  Evento = dplyr::recode(Evento,
+                  "Alive" = "Sopravvissuta",
+                  "Dead" = "Deceduta"),
+  Estrogeni = dplyr::recode(Estrogeni,
+                            "Positive" = "Positivi",
+                            "Negative" = "Negativi"),
+  Progesterone = dplyr::recode(Progesterone,
+                               "Positive" = "Positivi",
+                               "Negative" = "Negativi"))
+
+#la funzione across permette di applicare una funzione a più colonne contemporaneamente
+
+dati <- dati %>% mutate(
+  Grado_istologico = factor(Grado_istologico,
+    levels = c("Grado I", "Grado II", "Grado III", "Grado IV")))
+
+```
+
+```{r Creazione LODDS}
+
+#Creo la variabile LODDS
+
+dati$LODDS <- with(dati,
+  log((Linfonodi_positivi + 0.5) /
+      (Linfonodi_esam - Linfonodi_positivi + 0.5)))
+
+```
+
+## **Analisi esplorativa**
+
+```{r Correlazione variabili quantitative, fig.width=13, fig.height=10}
+
+#Heatmap delle variabili continue
+
+dati %>% select(where(is.numeric), -Tempo_sopravv) %>% 
+  cor(method = "pearson") %>%
+  pheatmap(mat = ., cluster_rows = FALSE, cluster_cols = FALSE,
+           color = colorRampPalette(c("blue", "white", "red"))(100),
+           display_numbers = TRUE, number_color = "black",
+           fontsize_number = 12, fontsize = 12)
+
+dati <- dati %>% select(-c(Linfonodi_esam, Linfonodi_positivi))
+
+```
+
+La matrice di correlazione lineare (**coefficiente di correlazione di Pearson**) evidenzia le relazioni lineari tra le principali variabili quantitative presenti nel dataset: età alla diagnosi, dimensione del tumore, numero di linfonodi esaminati, numero di linfonodi positivi e LODDS.
+
+Nel complesso, la maggior parte delle correlazioni risulta debole, ad eccezione delle relazioni che coinvolgono le variabili linfonodali. 
+In particolare, si osserva una correlazione positiva moderata tra il numero di linfonodi esaminati e il numero di linfonodi positivi (**r ≈ 0.41**), indicando che all’aumentare dei linfonodi esaminati tende ad aumentare anche il numero di linfonodi positivi rilevati. Questo risultato è atteso, poiché una maggiore estensione dell’esame aumenta la probabilità di identificare linfonodi metastatici.
+
+Il LODDS mostra una forte correlazione positiva con il numero di linfonodi positivi (**r ≈ 0.71**), suggerendo che esso è fortemente influenzato dalla presenza di linfonodi metastatici. Inoltre, presenta una correlazione negativa debole con i linfonodi esaminati (**r ≈ -0.23**).
+
+Alla luce di queste considerazioni, le variabili Linfonodi esaminati e Linfonodi positivi non sono state incluse simultaneamente nel modello multivariato insieme al LODDS. Infatti, il LODDS è una trasformazione che combina entrambe queste informazioni in un unico indicatore del coinvolgimento linfonodale. L'inclusione di tali variabili determinerebbe una sovrapposizione informativa e potenziali problemi di collinearità, con conseguente instabilità delle stime dei coefficienti. 
+
+Pertanto, per garantire maggiore parsimonia e interpretabilità del modello, è stato scelto di utilizzare esclusivamente il LODDS come misura del coinvolgimento linfonodale, evitando l'inserimento delle variabili originali da cui è derivato.
+
+```{r Tabella variabili generale}
+
+#Tabella delle statistiche di base (generale)
+
+dati %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{median} ({p25}, {p75}) [{min}, {max}]",
+      all_categorical() ~ "{n} ({p}%)")) %>%
+  modify_header(label = "**Variabile**") %>%
+  modify_footnote(all_stat_cols() ~ NA) 
+
+```
+
+La prima tabella riporta le caratteristiche basali delle **4024** pazienti incluse nell'analisi. L'età mediana alla diagnosi è di **54 anni** (**IQR: 47-61**). La maggior parte delle pazienti è di etnia bianca (**85%**) e sposata (**66%**). Dal punto di vista clinico, gli stadi tumorali più frequenti sono T1 (**40%**) e T2 (**44%**). La maggioranza dei tumori è di grado istologico II (**58%**) e con recettori estrogenici (**93%**) e progesteronici (**83%**) positivi.
+
+Per quanto riguarda gli indicatori quantitativi, la dimensione mediana del tumore è di **25mm** (**IQR: 56-90**), con una mediana di **14** linfonodi esaminati e **2** linfonodi positivi. Il valore mediano del LODDS è pari a **-1.10** (**IQR: -1.89;0.00**), indicando che nella maggior parte delle pazienti il numero di linfonodi positivi è inferiore a quello dei linfonodi negativi.
+Il follow-up mediano è di **73 mesi** (**IQR: 56-90**) e durante il periodo di osservazione si sono verificati **614** decessi (**15%**), mentre l'**85%** delle pazienti risulta ancora in vita al termine del follow-up. 
+
+```{r Table one}
+
+#Tabella delle variabili in base all'evento di interesse
+
+tab1 <- dati %>%
+  tbl_summary(by = Evento) %>%
+  add_p() %>%
+  modify_header(label = "**Variabile**") %>%
+  modify_footnote(all_stat_cols() ~ NA) 
+
+tab1
+
+```
+
+La tabella confronta le caratteristiche delle pazienti sopravvissute (**n = 3410**) e decedute (**n = 614**) durante il follow-up. 
+Le pazienti decedetute presentano un'età mediana superiore di 3 anni rispetto alle sopravvissute (**57 vs 54 anni, p < 0.001**). Inoltre, tra le pazienti decedute è più frequente l'etnia nera (**12% vs 6.4%**), dal punto di vista clinico le pazienti decedute presentano una malattia più avanzata alla diagnosi. In particolare, gli stadi T3-T4 sono più frequenti tra le decedute (**25,5%**) rispetto alle sopravvissute (**13,8%**), il **43%** delle pazienti decedute presenta un tumore di grado istologico III, mentre i tumori di grado I sono i meno frequenti tra le decedute (**6.4%**). Le pazienti decedute presentano tumori di dimensioni maggiori, con una dimensione mediana di 30 mm rispetto a **23mm** nelle sopravvissute (**p < 0.001**), e un maggiore coinvolgimento linfonodale (**4 vs 2, p < 0.001**).
+Per quanto riguarda i recettori ormonali, le pazienti decedute mostrano una minore frequenza di recettori estrogenici positivi (**83% vs 95%**) e di recettori progesteronici positivi (**67% vs 85%**), suggerendo una prognosi peggiore nei tumori privi di recettori ormonali. Il LODDS risulta più elevato nelle pazienti decedute, con una mediana di **-0.26** rispetto a **-1.27** nelle sopravvissute (**p < 0.001**), confermando una maggiore estensione della malattia linfonodale nelle pazienti con esito sfavorevole. 
+
+## **Curve di sopravvivenza**
+
+```{r Sopravvivenza overall, fig.width=13, fig.height=10}
+
+#Sopravvivenza overall
+
+dati$Evento <- ifelse(dati$Evento == "Deceduta",1,0)
+
+surv_obj <- Surv(time = dati$Tempo_sopravv, event = dati$Evento)
+
+km_overall <- survfit(surv_obj ~ 1, data = dati)
+ggsurvplot(km_overall, data = dati, 
+           xlab = "Mesi", ylab = "Sopravvivenza", 
+           censor.size = 2, conf.int = T,
+           risk.table = T, risk.table.height = 0.25,
+           risk.table.title = "A rischio",
+           ggtheme = theme_survminer())
+```
+
+L'analisi di sopravvivenza di Kaplan-Meier evidenzia che, complessivamente i pazienti presentano un'elevata probabilità di sopravvivenza nel periodo di follow-up considerato. In particolare, nei primi 12 mesi la sopravvivenza rimane superiore al **98%**, si osserva un calo graduale della sopravvivenza tra il 12° e il 36° mese, dal 98% si passa al **94%**, dal quale inizia una riduzione più visibile. Tra il 36° e il 60° mese, la sopravvivenza scende all'**88%**, mostrando un incremento del numero di eventi nel lungo termine. Dopo il 60° mese, la curva continua a decrescere raggiungendo il **79%** circa a 100 mesi. 
+
+```{r Sopravvivenza per Stadio T, fig.width=13, fig.height=10}
+
+#Sopravvivenza per lo stadio del tumore
+
+km_stadioT <- survfit(surv_obj ~ Stadio_T, data = dati)
+ggsurvplot(km_stadioT, data = dati, 
+           xlab = "Mesi", ylab = "Sopravvivenza",
+           palette = c("blue", "red", "orange","green"),
+           censor.shape = "|", censor.size = 2, 
+           conf.int = T, pval = T,
+           risk.table = T, risk.table.height = 0.25,
+           risk.table.col = "strata", 
+           risk.table.title = "A rischio",
+           legend.title = "Stadio T")
+```
+
+La sopravvivenza diminuisce progressivamente all'aumentare dello stadio T, con differenze evidenti nei primi anni di follow-up. A 12 mesi, la probabilità di sopravvivenza è ancora elevata, circa **99%** per T1 e T2, **98%** per T3 e **97%** per T4. Dopo 3 anni, le differenze diventano più marcate, in particolare i pazienti con stadio T4 mostrano una sopravvivenza inferiore di 18 punti percentuali rispetto a T1 (**78% contro 97%**), divario che incrementa ulteriormente a 5 anni (**72% contro 92%**) e a 8 anni (**circa 50% contro 87%**). Va tenuta in considerazione la ristretta numerosità campionaria, che comporta una elevata incertezza nella stima della probabilità di sopravvivenza per lo stadio T4. 
+
+```{r Sopravvivenza per Grado istologico, fig.width=13, fig.height=10}
+
+#Sopravvivenza per il grado istologico del tumore
+
+km_gradoISTO <- survfit(surv_obj ~ Grado_istologico, data = dati)
+ggsurvplot(km_gradoISTO, data = dati, 
+           xlab = "Mesi", ylab = "Sopravvivenza",
+           palette = c("blue", "red", "orange","green"),
+           censor.shape = "|", censor.size = 2, 
+           conf.int = T, pval = T,
+           risk.table = T, risk.table.height = 0.25,
+           risk.table.col = "strata", 
+           risk.table.title = "A rischio",
+           legend.title = "Grado Istologico")
+```
+
+Le pazienti con tumori di Grado I mostrano la prognosi migliore durante tutto il follow-up. Nei primi 12 mesi la sopravvivenza rimane molto elevata, prossima al **99%**, e decresce lentamente nel tempo. Dopo circa 5 anni la probabilità di sopravvivenza è ancora pari a circa **90%**, mentre a 100 mesi rimane superiore all’**89%**, evidenziando un decorso relativamente favorevole.
+Le pazienti con tumori di Grado II presentano una sopravvivenza lievemente inferiore rispetto al Grado I, ma comunque elevata nei primi anni di follow-up. A 12 mesi la sopravvivenza è pari a circa **99%**, mentre dopo 36 mesi si riduce al **95%** circa. A 5 anni la probabilità di sopravvivenza scende intorno al **90%**, raggiungendo circa **81%** a 100 mesi.
+Per le pazienti con tumori di Grado III si osserva una diminuzione della sopravvivenza decisamente più rapida. Già nei primi 12 mesi la sopravvivenza risulta inferiore rispetto ai gradi precedenti (**98%** circa), mentre dopo 3 anni scende intorno al **90%**. A 5 anni la probabilità di sopravvivenza è pari a circa **81%**, riducendosi ulteriormente fino a circa **69%** dopo 100 mesi. Questo andamento evidenzia una prognosi significativamente peggiore e una maggiore frequenza di eventi nel lungo periodo.
+Le pazienti con tumori di Grado IV presentano la sopravvivenza più bassa tra tutti i gruppi considerati. La probabilità di sopravvivenza diminuisce rapidamente già nei primi anni di follow-up: dopo circa 3 anni è pari a circa **79%**, mentre dopo 80 mesi scende intorno al **61%**. Tuttavia, va considerata la numerosità campionaria estremamente ridotta di questo gruppo, che comporta una maggiore incertezza nelle stime della sopravvivenza e intervalli di confidenza più ampi rispetto agli altri gradi istologici.
+
+```{r Sopravvivenza per Estrogeni, fig.width=13, fig.height=10}
+
+#Sopravvivenza in base agli estrogeni
+
+km_estrogeni <- survfit(surv_obj ~ Estrogeni, data = dati)
+ggsurvplot(km_estrogeni, data = dati, 
+           xlab = "Mesi", ylab = "Sopravvivenza",
+           palette = c("blue", "red"),
+           censor.shape = "|", censor.size = 2, 
+           conf.int = T, pval = T,
+           risk.table = T, risk.table.height = 0.25,
+           risk.table.col = "strata", 
+           risk.table.title = "A rischio",
+           legend.title = "Estrogeni")
+```
+
+La presenza di recettori per gli estrogeni positivi è associata ad una sopravvivenza nettamente migliore nel tempo. Le differenze tra i due gruppi sono già visibili nei primi anni e diventano sempre più marcate con il passare dei mesi. A 12 mesi, le pazienti con recettori estrogenici positivi presentano una sopravvivenza del **99%**, contro il **96%** dei pazienti con recettori negativi. Dopo 3 anni, la sopravvivenza delle pazienti con recettori negativi è inferiore di circa 24 punti percentuali rispetto a quella delle pazienti positivi (**72% contro 96%**). Dopo 96 mesi, la sopravvivenza dei pazienti con recettori positivi è superiore di circa 27 punti percentuali rispetto a quella dei pazienti con recettori negativi (**82% contro 56%**). Le pazienti con tumori estrogeno-positivi hanno una prognosi nettamente migliore e una diminuizione della sopravvivenza più lenta nel tempo.
+
+```{r Sopravvivenza per Progesterone, fig.width=13, fig.height=10}
+
+#Sopravvivenza in base al progesterone
+
+km_progesterone <- survfit(surv_obj ~ Progesterone, data = dati)
+ggsurvplot(km_progesterone, data = dati, 
+           xlab = "Mesi", ylab = "Sopravvivenza",
+           palette = c("blue", "red"),
+           censor.shape = "|", censor.size = 2, 
+           conf.int = T, pval = T,
+           risk.table = T, risk.table.height = 0.25,
+           risk.table.col = "strata", 
+           risk.table.title = "A rischio",
+           legend.title = "Progesterone")
+```
+
+Anche la presenza di recettori per il progesterone fa sì che ci sia una prognosi migliore, anche se le differenze tra i gruppi risultano meno marcate rispetto a quelle osservate per i recettori estrogenici. A 12 mesi, la sopravvivenza è alta in entrambi i gruppi (**99% per i positivi e 97% per i negativi**). A 3 anni, i pazienti con recettori negativi presentano una sopravvivenza inferiore di circa 13 punti percentuali rispetto a quelli con recettori positivi (**83% contro 96%**). A 8 anni, la differenza è di circa 17 punti percentuali (**66% contro 83%**). 
+
+```{r Sopravvivenza per Etnia, fig.width=13, fig.height=10}
+
+#Sopravvivenza per etnia
+
+km_etnia <- survfit(surv_obj ~ Etnia, data = dati)
+ggsurvplot(km_etnia, data = dati, 
+           xlab = "Mesi", ylab = "Sopravvivenza",
+           palette = c("blue", "red", "orange"),
+           censor.shape = "|", censor.size = 2, 
+           conf.int = T, pval = T,
+           risk.table = T, risk.table.height = 0.25,
+           risk.table.col = "strata", 
+           risk.table.title = "A rischio",
+           legend.title = "Etnia")
+```
+
+Considerando l'etnia delle pazienti, si nota che la sopravvivenza delle pazienti di etnia nera è la più bassa rispetto alle altre due etnie considerate. Nei primi 12 mesi la sopravvivenza è alta per tutte le etnie considerate, con una differenza massima di circa due punti percentuali tra il gruppo di etnia bianca (**99%**) e quello di etnia nera (**97%**). Dopo 36 mesi, si nota una divergenza in termini di sopravvivenza, infatti il gruppo di etnia nera ha la sopravvivenza più bassa (**90%**), mentre le pazienti di altra etnia hanno una probabilità di sopravvivere più alta (**96%**). Dopo 5 anni, la differenza tra il gruppo di etnia nera e il gruppo di etnia bianca è di circa 9 punti percentuali, evidenziano una disparità crescente nel lungo periodo. Va preso in considerazione il fatto che, data la minore numerosità campionaria del gruppo di entia nera, si ha una maggiore incertezza della stima della probabilità di sopravvvenza per questa variabile. 
+
+Le differenze tra le curve di sopravvivenza sono state valutate mediante test Log-Rank, che ha evidenziato differenze statisticamente significative tra i gruppi considerati (**p < 0.001**).
+
+## **Regressione di Cox**
+
+```{r Modelli di Cox univariati}
+
+#Cox Età diagnosi
+cox_eta <- coxph(surv_obj ~ Età_diagnosi, data = dati)
+
+#Cox Etnia
+cox_etnia <- coxph(surv_obj ~ Etnia, data = dati)
+
+#Cox Stato civile
+cox_statociv <- coxph(surv_obj ~ Stato_civile, data = dati)
+
+#Cox Stadio T
+cox_stadioT <- coxph(surv_obj ~ Stadio_T, data = dati)
+
+#Cox Stadio N
+cox_stadioN <- coxph(surv_obj ~ Stadio_N, data = dati)
+
+#Cox Stadio ajcc
+cox_ajcc <- coxph(surv_obj ~ Stadio_ajcc, data = dati)
+
+#Cox Grado istologico
+cox_grado <- coxph(surv_obj ~ Grado_istologico, data = dati)
+
+#Cox Stadio A
+cox_stadioA <- coxph(surv_obj ~ Stadio_A, data = dati)
+
+#Cox dimensione tumore
+cox_dimensione <- coxph(surv_obj ~ Dimensione_tumore, data = dati)
+
+#Cox Estrogeni
+cox_estrogeni <- coxph(surv_obj ~ Estrogeni, data = dati)
+
+#Cox Progesterone
+cox_progesterone <- coxph(surv_obj ~ Progesterone, data = dati)
+
+#Cox LODDS
+cox_lodds <- coxph(surv_obj ~ LODDS, data = dati)
+
+```
+
+```{r Cox multivariato}
+
+cox_full <- coxph(surv_obj ~ Età_diagnosi + Etnia + Stato_civile +
+                    Stadio_T + Stadio_N + Stadio_ajcc +
+                    Grado_istologico + Stadio_A + Dimensione_tumore +
+                    Estrogeni + Progesterone + LODDS,
+                    data = dati)
+
+#Variabili cliniche rilevanti
+cox_clinico <-  coxph(surv_obj ~ Età_diagnosi 
+                      + Stadio_T + Grado_istologico 
+                      + Dimensione_tumore, 
+                      data = dati)
+
+#Biomarcatori
+cox_biom <- update(cox_clinico, . ~ . + Estrogeni
+                   + Progesterone + LODDS)
+
+#Variabili socio-demografiche
+cox_sd = update(cox_biom, . ~ . + Etnia 
+                + Stato_civile)
+
+cox_no_sc = update(cox_sd, . ~ . -Stato_civile)
+
+anova(cox_sd, cox_no_sc, test = "LRT")
+
+AIC(cox_full, cox_clinico, cox_biom, cox_sd, cox_no_sc)
+
+```
+
+In una prima fase, è stata condotta un’analisi univariata mediante modelli di regressione di Cox separati per ciascuna variabile. Questo approccio ha permesso di valutare l’associazione grezza tra ogni covariata e il tempo di sopravvivenza, senza aggiustamento per possibili fattori confondenti.
+
+Sono state considerate variabili cliniche (Età alla diagnosi, Dimensione del tumore, Stadio_T, Stadio_N, Stadio_AJCC, Stadio_A, Grado istologico), biomarcatori (Estrogeni, Progesterone, LODDS) e variabili socio-demografiche (Etnia, Stato civile).
+
+L’obiettivo di questa fase è stato esclusivamente esplorativo, volto a comprendere la direzione e la forza dell’associazione tra ciascun predittore e l’outcome.
+
+Successivamente, è stato stimato un modello multivariato completo (cox_full), includendo simultaneamente tutte le variabili cliniche, patologiche, biologiche e socio-demografiche.
+Questo modello rappresenta la specificazione massima possibile dell’informazione disponibile e consente di valutare l’effetto indipendente di ciascuna variabile dopo aggiustamento per tutte le altre.
+
+I risultati hanno evidenziato che alcune variabili, in particolare Stadio_AJCC, Stadio_A e Stadio_N, presentano una forte sovrapposizione informativa con altre variabili del modello, suggerendo la presenza di ridondanza strutturale all’interno della definizione dello staging tumorale.
+
+Per valutare la stabilità e il contributo delle diverse classi di variabili, è stato adottato un approccio gerarchico di costruzione del modello:
+
+-**Modello clinico di base** (cox_clinico)
+includente Età alla diagnosi, Stadio_T, Grado istologico, Dimensione del tumore e LODDS.
+
+-**Aggiunta dei biomarcatori** (cox_biom)
+con l’inclusione di Estrogeni e Progesterone.
+
+-**Aggiunta delle variabili socio-demografiche** (cox_sd)
+con l’inclusione di Etnia e Stato civile.
+
+I modelli sono stati confrontati utilizzando l’AIC, al fine di valutare il trade-off tra bontà di adattamento e complessità del modello.
+
+Il modello completo (cox_full) ha mostrato il miglior adattamento ai dati (**AIC = 9351.299**), dal modello che include le variabili socio-demografiche (**cox_sd, AIC = 9356.048**). Il modello clinico di base ha invece evidenziato un adattamento inferiore (**AIC = 9457.099**).
+
+Tuttavia, nonostante il miglior valore di AIC, il modello completo presenta importanti criticità metodologiche che ne limitano l’interpretabilità e la validità inferenziale.
+In particolare, il modello include simultaneamente variabili di staging tra loro correlate e ridondanti (Stadio_AJCC, Stadio_T, Stadio_N e Stadio_A), che derivano da definizioni sovrapposte della stessa informazione clinica. Questa sovrapposizione strutturale introduce problemi di collinearità, instabilità delle stime e difficoltà nell’interpretazione dei coefficienti.
+Tale problematica è evidenziata anche dalla presenza di parametri non stimabili (NA) in alcune categorie dello Stadio_AJCC, indicativa di una quasi perfetta dipendenza lineare tra variabili esplicative.
+Inoltre, nel modello completo alcune variabili risultano non significative nel contesto multivariato (ad esempio la dimensione tumorale e lo Stadio_AJCC), suggerendo che il loro effetto sia già assorbito da variabili più informative come Stadio_T e LODDS.
+
+Per questo motivo, è stata ulteriormente valutata una versione semplificata del modello, ottenuta rimuovendo la variabile Stato civile (cox_no_sc). Il confronto tra il modello completo con variabili socio-demografiche (cox_sd) e il modello ridotto (cox_no_sc) è stato effettuato mediante test del rapporto di verosimiglianza (Likelihood Ratio Test) e confronto dell’AIC.
+
+Dal punto di vista applicativo, la presenza di un elevato numero di parametri e di ridondanza informativa riduce la stabilità del modello e ne limita la capacità di generalizzare i risultati ottenuti, aumentando il rischio di overfitting.
+Per questi motivi, la selezione del modello finale non si è basata esclusivamente sull’AIC, ma ha tenuto conto anche di criteri di parsimonia, interpretabilità clinica e assenza di ridondanza tra covariate.
+
+Il modello finale scelto è pertanto il modello cox_no_sc, che rappresenta il miglior compromesso tra capacità esplicativa e semplicità strutturale, includendo esclusivamente le variabili che forniscono un contributo informativo indipendente alla spiegazione della sopravvivenza.
+
+```{r Tabella parametri Cox}
+
+tbl_uni <- tbl_uvregression(
+  method = coxph,
+  y = surv_obj,
+  include = c(
+    Età_diagnosi,
+    Etnia,
+    Stato_civile,
+    Stadio_T,
+    Stadio_N,
+    Stadio_ajcc,
+    Stadio_A,
+    Grado_istologico,
+    Dimensione_tumore,
+    Estrogeni,
+    Progesterone,
+    LODDS
+  ),
+  data = dati,
+  exponentiate = TRUE,
+  hide_n = T) 
+
+tbl_multi <- tbl_regression(
+  cox_no_sc,
+  exponentiate = TRUE) %>%
+  modify_header(label = "**Variabile**") %>%
+  modify_footnote(all_stat_cols() ~ NA) 
+
+tbl_final <- tbl_merge(
+  tbls = list(tbl_uni, tbl_multi),
+  tab_spanner = c("**Univariato**", "**Multivariato**")) %>%
+  modify_header(label = "**Variabile**")
+
+tbl_final
+
+```
+
+Il confronto tra modello univariato e multivariato permette di leggere in modo più accurato il ruolo delle diverse variabili sulla sopravvivenza, considerando che gli hazard ratio (HR) rappresentano la variazione relativa del rischio associata a ciascun fattore.
+
+Tra i risultati più stabili emerge l’età alla diagnosi, che presenta un HR pari a **1.02** in entrambi i modelli. Questo significa che, a parità delle altre condizioni, ogni anno in più di età è associato a un incremento del rischio di morte del 2%.
+
+Lo stadio tumorale mostra invece un effetto crescente con la gravità della malattia. Nel modello multivariato, rispetto allo stadio T1, il rischio aumenta del 46% per T2 (**HR = 1.46**) e risulta più che raddoppiato per T4 (**HR = 2.39**). Per lo stadio T3 si osserva un aumento del rischio (**HR = 1.50**), ma con significatività borderline (**p = 0.06**).
+
+Un andamento simile si osserva per il grado istologico, che riflette l’aggressività biologica del tumore. Rispetto ai tumori ben differenziati (grado I), il rischio aumenta del 61% per il grado II (**HR = 1.61**), più che raddoppia per il grado III (**HR = 2.31**) e supera il triplo per il grado IV (**HR = 3.35**), confermando una chiara relazione tra peggioramento istologico e rischio di morte.
+
+Il LODDS si conferma uno dei predittori più importanti: l’HR pari a **1.37** indica che un aumento del coinvolgimento linfonodale è associato a un incremento del 37% del rischio di morte, evidenziando il ruolo centrale della diffusione linfonodale nella prognosi.
+
+Per quanto riguarda i biomarcatori, la positività ai recettori ormonali ha un effetto protettivo statisticamente significativo. In particolare, le pazienti con recettori estrogenici positivi presentano un rischio ridotto del 49% rispetto alle negative (**HR = 0.51**), mentre per il progesterone la riduzione è del 39% (**HR = 0.61**). Questo indica una prognosi significativamente migliore nei tumori ormono-responsivi.
+
+Anche l’etnia mostra differenze nel rischio di morte: rispetto alla categoria di riferimento, le pazienti bianche presentano una riduzione del rischio del 35% (**HR = 0.65**), mentre le  pazienti appartenenti ad altre etnie del 57% (**HR = 0.43**), suggerendo differenze prognostiche che possono riflettere sia fattori biologici sia socio-sanitari (accesso alle cure).
+
+La dimensione del tumore, pur risultando significativa nell'analisi univariata, perde significatività nel modello multivariato (**HR ≈ 1.00; p = 0.4**), suggerendo che il suo effetto prognostico sia in gran parte mediato da variabili più informative come lo stadio tumorale e il LODDS.
+
+Le variabili relative allo staging aggregato (Stadio N, Stadio AJCC e Stadio A), sebbene associate all'outcome in analisi univariata, non sono state incluse nel modello finale in quanto ridondanti rispetto alle informazioni già catturate dallo Stadio T e LODDS. In maniera analoga, lo Stato civile è stato escluso nella fase finale di modellizzazione perché non ha mostrato un contributo alla spiegazione della sopravvivenza e non ha migliorato l'adattamento del modello. 
+
+### **Valutazione dei residui del modello**
+
+```{r Valutazione proporzionalità, fig.width=15, fig.height=12}
+
+test <- cox.zph(cox_no_sc)
+test
+
+ggcoxzph(test, point.size = 0.1)
+
+```
+
+Il test di Schoenfeld permette di verificare l’ipotesi di proporzionalità dei rischi, cioè se l’effetto delle covariate sul rischio rimane costante nel tempo. Nel complesso, il test globale risulta significativo (**p = 7.3e-06**), suggerendo la presenza di alcune violazioni dell’assunzione nel modello..
+
+La maggior parte delle variabili cliniche non mostra evidenze di violazione dell’ipotesi, presentando p-value superiori al 5%, indicando che il loro effetto può essere considerato sostanzialmente costante nel tempo. 
+
+Al contrario, emergono violazioni molto evidenti per i recettori ormonali. Sia gli estrogeni (**p = 1.2e-08**) sia il progesterone (**p = 2.7e-09**) mostrano una forte evidenza di non proporzionalità dei rischi. Questo significa che l’effetto protettivo associato alla positività dei recettori non rimane costante lungo il follow-up, ma varia nel tempo. In altre parole, l’impatto prognostico della positività ormonale potrebbe essere più forte in alcune fasi iniziali e attenuarsi o modificarsi successivamente.
+
+### **Estensioni del modello di Cox**
+
+Per tenere conto della violazione dell'ipotesi di proporzionalità osservata per i recettori ormonali, sono state adottate due strategie differenti.
+
+Per quanto riguarda i **recettori estrogenici**, si è scelto di utilizzare un **modello di Cox stratificato**, introducendo la variabile Estrogeni come fattore di stratificazione. Questa scelta consente all'hazard baseline di variare tra i gruppi (estrogeni positivi e negativi), senza stimarne direttamente il coefficiente. In ambito oncologico, diversi tudi hanno evidenziato che lo statp dei recettori estrogenici è associato a pattern di rischio differenti nel tempo, con hazard non proporzionali tra i gruppi, rendendo appropriato l'utilizzo di modelli stratificati per controllarne l'effetto. 
+
+Per quanto riguarda il **progesterone**, si è optato per un approccio diverso, introducendo un **coefficiente tempo-dipendente**. In particolare, la variabile è stata inclusa nel modello sia come effetto principale sia in interazione con una funzione del tempo, al fine di modellarne la variazione nel corso del follow-up. Questa scelta è motivata dal fatto che per questa variabile si è ritenuto rilevante stimare e interpretare direttamente l'evoluzione del suo effetto nel tempo.
+Per valutare la forma funzionale più appropriata per descrivere tale dipendenza temporale, sono state considerate tre diverse specificazioni per la funzione del tempo: **lineare**, **radice quadrata** e **logaritmica**. Queste tre trasformazioni rappresentano scelte comunemente adottate per modellare effetti tempo-dipendenti, in quanto consentono di catturare diversi possibili andamenti: una crescita lineare costante nel tempo, una crescita più graduale (radice quadrata) e un effetto più marcato nelle fasi iniziali seguito da una stabilizzazione (logaritmica). Tale valutazione permette di valutare la robustezza dei risultati rispetto alla specificazione del modello e di individuare quella più coerente dal punto di vista statistico e clinico.
+
+```{r Cox stratificato + time varying coefficient, fig.width=13, fig.height=10}
+
+dati$Prog_num <- ifelse(dati$Progesterone == "Positivi", 1, 0)
+
+#Modello stratificato con effetto logaritmico
+model_strata_log <- coxph(surv_obj ~ Età_diagnosi + Stadio_T + 
+                            Grado_istologico + Dimensione_tumore +
+                            LODDS + Etnia + strata(Estrogeni) +
+                            Prog_num + tt(Prog_num), data = dati, 
+                            tt = function(x, t, ...) x * log(t))
+
+#Modello stratificato con effetto lineare
+model_strata_lin <- coxph(surv_obj ~ Età_diagnosi + Stadio_T + 
+                            Grado_istologico + Dimensione_tumore + 
+                            LODDS + Etnia + strata(Estrogeni) + 
+                            Prog_num + tt(Prog_num), data = dati,
+                            tt = function(x, t, ...) x * t)
+
+#Modello stratificato con effetto radice quadrata
+model_strata_sqrt <- coxph(surv_obj ~ Età_diagnosi + Stadio_T +
+                             Grado_istologico + Dimensione_tumore +                              LODDS + Etnia + strata(Estrogeni) + 
+                             Prog_num + tt(Prog_num), data = dati,
+                             tt = function(x, t, ...) x * sqrt(t))
+
+AIC(model_strata_log, model_strata_lin, model_strata_sqrt)
+
+tbl_cox_log <- tbl_regression(
+  model_strata_log,
+  exponentiate = TRUE) %>%
+  modify_header(label = "**Variabile**") %>%
+  modify_footnote(all_stat_cols() ~ NA) 
+
+tbl_cox_lin <- tbl_regression(
+  model_strata_lin,
+  exponentiate = TRUE) %>%
+  modify_header(label = "**Variabile**") %>%
+  modify_footnote(all_stat_cols() ~ NA)
+
+tbl_cox_sqrt <- tbl_regression(
+  model_strata_sqrt,
+  exponentiate = TRUE) %>%
+  modify_header(label = "**Variabile**") %>%
+  modify_footnote(all_stat_cols() ~ NA)
+
+tbl_est_cox <- tbl_merge(
+  tbls = list(tbl_cox_log, tbl_cox_lin, tbl_cox_sqrt),
+  tab_spanner = c("**Log(t)**", "**Lineare (t)**", "**Radice (√t)**")) %>%
+  modify_header(label = "**Variabile**")
+
+tbl_est_cox
+
+```
+
+L'analisi dei parametri stimati nei tre modelli mostra una stabilità delle stime relative alle altre covariate, che risultano sostanzialmente invariate rispetto al modello precedente senza effetti tempo-dipendenti e stratificazione. 
+
+Per quanto riguarda il progesterone, in tutti i modelli si osserva un coefficiente principale negativo e un coefficiente tempo-dipendente positivo e statisticamente significativo. Questo implica che la positività ai recettori progesteronici è associata ad un effetto protettivo iniziale che tende progressivamente ad attenuarsi nel tempo.
+
+Dal punto di vista della bontà di adattamento, il confronto tramite AIC evidenza che il modello con effetto lineare sia il migliore (**AIC = 8795.9**), seguito dal modello con trasformazione radice quadrata (**AIC = 8798.1**) e da quello logaritmico (**AIC = 8801.1**). Tuttavia, le differenze tra i valori di AIC risultano contenute (**ΔAIC < 6**), suggerendo che nessun modello si distingue in maniera netta sugli altri. Analogamente, la concordanza rimane invariata (**circa 0.714**) in tutte le specificazioni, indicando una capacità predittica pressoché identica. Le deviazioni standard dei coefficienti risultano contenute, senza evidenze di instabilità rilevanti, sebbene il modello logaritmico presenti una maggiore variabilità nella stima del coefficiente principale del progesterone.
+
+```{r Hazard baseline per modello stratificato, fig.width=13, fig.height=10}
+
+model_strata <- coxph(surv_obj ~ Età_diagnosi + Stadio_T + 
+                             Grado_istologico + Dimensione_tumore +
+                             LODDS + Etnia + Prog_num + 
+                             strata(Estrogeni), data = dati)
+
+bh <- basehaz(model_strata, centered = FALSE)
+
+ggplot(bh, aes(x = time, y = hazard, color = strata)) +
+  geom_line(size = 1.2) +
+  labs(
+    x = "Tempo",
+    y = "Hazard cumulativa baseline",
+    color = "Strato estrogeni"
+  ) +
+  theme_minimal()
+
+```
+
+Il grafico delle hazard cumulative baseline stratificato evidenzia differenze marcate tra i pazienti con recettori estrogenici positivi e negativi. In particolare, il gruppo con recettori estrogenici negativi presenta un incremento della hazard cumulativa più rapido e pronunciato nel corso del follow-up rispetto al gruppo con recettori positivi, indicando un rischio di evento complessivamente più elevato.
+
+Le curve mostrano inoltre andamenti non paralleli nel tempo, suggerendo che l’effetto associato allo stato dei recettori estrogenici non possa essere adeguatamente descritto tramite un hazard ratio costante. Questo risultato risulta coerente con quanto emerso dal test di Schoenfeld e supporta l’utilizzo della stratificazione nel modello di Cox, consentendo di stimare hazard baseline differenti per i due gruppi senza imporre l’ipotesi di proporzionalità dei rischi.
+
+```{r Effetto del progesterone, fig.width=15, fig.height=12}
+
+tempo <- seq(0.1, max(dati$Tempo_sopravv, na.rm = TRUE), length.out = 300)
+
+#funzione per ottenere HR e IC95%
+
+calcola_hr <- function(modello, trasformazione, tempo) {
+  
+  b <- coef(modello)
+  vc <- vcov(modello)
+  
+  beta0 <- b["Prog_num"]
+  beta1 <- b["tt(Prog_num)"]
+  
+#nome delle due componenti nella matrice di varianza-covarianza
+ 
+  var0 <- vc["Prog_num", "Prog_num"]
+  var1 <- vc["tt(Prog_num)", "tt(Prog_num)"]
+  cov01 <- vc["Prog_num", "tt(Prog_num)"]
+  
+  g_t <- trasformazione(tempo)
+  
+  logHR <- beta0 + beta1 * g_t
+  
+  se_logHR <- sqrt(var0 + (g_t^2) * var1 + 2 * g_t * cov01)
+  
+  data.frame(
+    tempo = tempo,
+    HR = exp(logHR),
+    lower = exp(logHR - 1.96 * se_logHR),
+    upper = exp(logHR + 1.96 * se_logHR)
+  )
+}
+
+df_lin  <- calcola_hr(model_strata_lin,  function(t) t, tempo)
+df_lin$modello <- "Lineare"
+
+df_sqrt <- calcola_hr(model_strata_sqrt, function(t) sqrt(t), tempo)
+df_sqrt$modello <- "Radice"
+
+df_log  <- calcola_hr(model_strata_log,  function(t) log(t), tempo)
+df_log$modello <- "Logaritmico"
+
+p1 <- ggplot(df_lin, aes(x = tempo, y = HR)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.15) +
+  geom_line(size = 1.1, color = "steelblue") +
+  geom_hline(yintercept = 1, linetype = 2) +
+  labs(title = "Lineare") +
+  theme_minimal()
+
+p2 <- ggplot(df_sqrt, aes(x = tempo, y = HR)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.15) +
+  geom_line(size = 1.1, color = "darkgreen") +
+  geom_hline(yintercept = 1, linetype = 2) +
+  labs(title = "Radice") +
+  theme_minimal()
+
+p3 <- ggplot(df_log, aes(x = tempo, y = HR)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.15) +
+  geom_line(size = 1.1, color = "darkred") +
+  geom_hline(yintercept = 1, linetype = 2) +
+  labs(title = "Logaritmico") +
+  theme_minimal()
+
+(p1 | p2 | p3)
+
+```
+
+L'analisi grafica dell'hazard ratio tempo-dipendente per il progesterone consente di interpretare più chiaramente le differenze tra le tre specificazioni. 
+
+Nel modello lineare, l'HR aumenta progressivamente nel tempo, mostrando una crescita monotona che, nelle fasi più avanzate del follow-up, tende a superare il valore unitario. Questo comportamento suggerisce un'inversione dell'effetto, con perdita del beneficio associat alla positività del progesterone nel lungo periodo. Tale andamento però può risultare eccessivamente rigido e poco realistico dal punto di vista clinico, in quanto implica una crescita indefinita dell'effetto nel tempo.
+
+Nel modello con trasformazione radice quadrata, l’aumento dell’hazard ratio risulta più graduale e meno pronunciato. L’effetto protettivo iniziale si attenua progressivamente, ma senza evidenziare variazioni estreme, configurando un andamento più stabile e plausibile. Le bande di confidenza risultano relativamente contenute lungo l’intero intervallo temporale, indicando una buona precisione della stima.
+
+Il modello logaritmico mostra invece un andamento caratterizzato da un effetto molto marcato nelle fasi iniziali, seguito da una progressiva stabilizzazione nel tempo. Questo tipo di comportamento è spesso osservato in ambito clinico, dove l’effetto dei biomarcatori può essere più rilevante nelle fasi precoci della malattia. Tuttavia, in questo caso si osserva un ampliamento delle bande di confidenza per tempi più elevati, segnalando una maggiore incertezza nelle stime a lungo termine.
+Pertanto, il modello finale selezionato è il modello di Cox stratificato sugli estrogeni con coefficiente tempo-dipendente logaritmico per il progesterone.
+
+# **Conclusioni**
+
+In questo lavoro è stata condotta un’analisi di sopravvivenza su un campione di 4024 pazienti affette da carcinoma mammario invasivo, utilizzando dati provenienti dal database SEER. L’obiettivo principale dello studio è stato quello di identificare i principali fattori prognostici associati alla sopravvivenza e valutare la loro influenza nel tempo attraverso metodologie statistiche specifiche per dati censurati.
+
+L’analisi è stata sviluppata seguendo un approccio progressivo e strutturato. In una prima fase sono state utilizzate tecniche descrittive ed esplorative per caratterizzare il campione e valutare le relazioni tra le variabili disponibili. Successivamente, mediante lo stimatore di Kaplan-Meier e il test Log-Rank, sono state confrontate le curve di sopravvivenza tra differenti sottogruppi clinici e biologici. Infine, è stato implementato un modello di regressione di Cox per quantificare l’effetto simultaneo delle covariate sulla sopravvivenza e individuare i principali fattori prognostici indipendenti.
+
+Dal punto di vista metodologico, una scelta rilevante dell’analisi è stata la costruzione gerarchica dei modelli di Cox. Dopo una fase iniziale di modelli univariati, è stato stimato un modello completo comprendente variabili cliniche, biologiche e socio-demografiche. Tuttavia, la presenza di forte ridondanza informativa tra le variabili di staging tumorale (Stadio T, Stadio N, Stadio AJCC e Stadio A) ha evidenziato problemi di collinearità e instabilità delle stime. Per questo motivo, la selezione del modello finale non si è basata esclusivamente sulla bontà di adattamento misurata tramite AIC, ma anche su criteri di parsimonia, interpretabilità clinica e stabilità inferenziale. In particolare, si è scelto di rappresentare il coinvolgimento linfonodale mediante il solo indice LODDS, evitando l’inclusione simultanea del numero di linfonodi esaminati e positivi, dai quali il LODDS stesso deriva.
+
+I risultati ottenuti mostrano che la sopravvivenza delle pazienti diminuisce progressivamente all’aumentare della gravità clinica della malattia. In particolare, stadi tumorali più avanzati, gradi istologici elevati e maggiore coinvolgimento linfonodale risultano associati ad un incremento significativo del rischio di morte. Il LODDS emerge come uno dei predittori prognostici più importanti, confermando il ruolo centrale della diffusione linfonodale nella progressione del carcinoma mammario. Anche l’età alla diagnosi mostra un’associazione significativa con la sopravvivenza, con un aumento graduale del rischio all’aumentare dell’età.
+
+Per quanto riguarda i biomarcatori, la positività ai recettori estrogenici e progesteronici risulta associata ad una prognosi significativamente migliore. Tuttavia, la verifica dell’assunzione di proporzionalità degli hazard mediante residui di Schoenfeld ha evidenziato una violazione importante per entrambe le variabili ormonali, indicando che il loro effetto non rimane costante nel tempo. Questo risultato ha reso necessario estendere il modello di Cox standard.
+
+A tal fine, sono state adottate due strategie differenti ma complementari. Per i recettori estrogenici è stato utilizzato un modello di Cox stratificato, consentendo hazard baseline differenti tra pazienti estrogeno-positive ed estrogeno-negative. Per il progesterone è stato invece introdotto un coefficiente tempo-dipendente, valutando differenti specificazioni funzionali della dipendenza temporale (lineare, radice quadrata e logaritmica). Sebbene il modello lineare presentasse il miglior valore di AIC, l’analisi grafica dell’hazard ratio tempo-dipendente ha evidenziato che tale specificazione produce un andamento poco plausibile dal punto di vista clinico nel lungo periodo. Per questo motivo, la scelta finale è ricaduta sul modello stratificato con effetto logaritmico del tempo, ritenuto maggiormente coerente con l’evoluzione clinica del rischio e più interpretabile dal punto di vista biologico.
+
+L’analisi ha inoltre evidenziato differenze prognostiche associate all’etnia. In particolare, le pazienti di etnia nera mostrano probabilità di sopravvivenza inferiori rispetto agli altri gruppi considerati. Tuttavia, tali risultati devono essere interpretati con cautela, poiché potrebbero riflettere non solo differenze biologiche ma anche disparità socio-economiche, differenze nell’accesso alle cure, nella diagnosi precoce e nei trattamenti ricevuti, aspetti che non sono direttamente osservabili nel dataset utilizzato.
+
+Nonostante i risultati ottenuti siano coerenti con la letteratura clinica ed epidemiologica sul carcinoma mammario, il presente studio presenta alcune limitazioni metodologiche e informative. Innanzitutto, il dataset non include numerose variabili clinicamente rilevanti che potrebbero influenzare significativamente la sopravvivenza. Tra queste vi sono informazioni dettagliate sui trattamenti ricevuti (chemioterapia, radioterapia, terapia endocrina, chirurgia), sulla presenza di comorbidità, sullo stato menopausale, sul profilo molecolare del tumore (HER2, sottotipo molecolare), sui fattori genetici e sulle eventuali recidive della malattia. L’assenza di tali informazioni limita la possibilità di controllare completamente il confondimento e potrebbe aver portato a una sovrastima o sottostima dell’effetto di alcune covariate incluse nel modello.
+
+Un’ulteriore limitazione riguarda la natura osservazionale del database SEER. Non essendo uno studio sperimentale randomizzato, le associazioni osservate non possono essere interpretate in termini causali. Inoltre, la presenza di possibili errori di registrazione, misclassificazioni e variabilità nelle procedure diagnostiche tra i centri contribuisce ad introdurre ulteriore eterogeneità nei dati. Anche la censura è stata assunta non informativa, ipotesi fondamentale nell’analisi di sopravvivenza ma difficilmente verificabile empiricamente.
+
+Dal punto di vista statistico, alcune categorie presentano numerosità ridotte, come nel caso dello stadio T4 o di alcune categorie etniche, determinando una maggiore incertezza nelle stime degli hazard ratio e delle curve di sopravvivenza. Inoltre, sebbene il modello finale abbia mostrato una buona capacità discriminante, la presenza di effetti tempo-dipendenti suggerisce che la dinamica prognostica del tumore mammario sia complessa e non completamente descrivibile mediante hazard ratio costanti nel tempo.
+
+Nel complesso, questo studio evidenzia come l’analisi di sopravvivenza rappresenti uno strumento fondamentale per comprendere i fattori prognostici associati al carcinoma mammario. L’utilizzo combinato di metodi non parametrici, modelli di Cox e loro estensioni ha permesso di ottenere una descrizione articolata della dinamica del rischio nel tempo, evidenziando l’importanza di considerare sia gli aspetti clinico-patologici sia la possibile non proporzionalità degli hazard. Future analisi potrebbero beneficiare dell’integrazione di variabili biologiche e terapeutiche più dettagliate, nonché dell’utilizzo di approcci più flessibili, come modelli parametrici avanzati, modelli multi-state o tecniche di machine learning per dati di sopravvivenza, al fine di migliorare ulteriormente la capacità predittiva e la comprensione dei meccanismi prognostici del tumore al seno.
+
+# **Bibliografia**
+
+[1] Incidenza globale
+
+World Health Organization
+World Health Organization. Breast cancer: facts and statistics.
+Disponibile su: https://www.who.int
+
+[2] Epidemiologia USA
+
+American Cancer Society
+American Cancer Society. How common is breast cancer?
+Disponibile su: https://www.cancer.org/cancer/types/breast-cancer/about/how-common-is-breast-cancer.html
+
+[3] Informazioni cliniche e prognostiche
+
+Associazione Italiana per la Ricerca sul Cancro
+AIRC. Tumore al seno – guida completa.
+Disponibile su: https://www.airc.it/cancro/informazioni-tumori/guida-ai-tumori/tumore-del-seno
+
+[4] Fattori di rischio
+
+Mayo Clinic
+Mayo Clinic. Breast cancer: symptoms and causes.
+Disponibile su: https://www.mayoclinic.org/diseases-conditions/breast-cancer/symptoms-causes/syc-20352470
+
+[5] Studio scientifico (prognosi e linfonodi)
+
+Jiahuai Wen et al.
+Development and validation of a prognostic nomogram based on the log odds of positive lymph nodes (LODDS) for breast cancer.
+Oncotarget, 2016. PMCID: PMC4991511
+
+[6] (articolo principale LODDS)
+
+Wen J, Ye F, He X, Li S, Huang X, Xiao X, Xie X.
+Development and validation of a prognostic nomogram based on the log odds of positive lymph nodes (LODDS) for breast cancer.
+Oncotarget. 2016;7(15):21046–21053.
+DOI: 10.18632/oncotarget.8091
+PMCID: PMC4991511
+
+[7] (articolo più recente su log odds e survival)
+
+Alamu OS, Choque BJG, Rizvi SWA, Hammed SB, Medani IE, Siam MK, Tahir WA.
+Predicting Breast Cancer Survival: A Survival Analysis Approach Using Log Odds and Clinical Variables.
+Open Access Library Journal. 2024;11.
+DOI: 10.4236/oalib.1112317
+
+[8] Fonte dati (SEER)
+
+National Cancer Institute
+National Cancer Institute. SEER Program Overview.
+Disponibile su: https://seer.cancer.gov
+
+[9] Dataset utilizzato
+
+IEEE Dataport
+SEER Breast Cancer Data (2017 update)
+Disponibile su: https://ieee-dataport.org/open-access/seer-breast-cancer-data
+
+[10] Metodi statistici
+
+David Collett
+Collett, D. Modelling Survival Data in Medical Research. CRC Press.
