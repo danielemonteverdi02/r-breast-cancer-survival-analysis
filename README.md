@@ -1,11 +1,16 @@
-# Breast Cancer Survival Analysis 📊
+This project was developed as an applied statistical exercise in survival analysis, focusing on:
+
+- real-world medical data modeling  
+- handling of non-proportional hazards  
+- model selection and interpretation in clinical contexts  
+- integration of statistical analysis and data # Breast Cancer Survival Analysis 📊
 
 ## Project Overview
 This project focuses on the survival analysis of breast cancer patients using the SEER (Surveillance, Epidemiology, and End Results) database.
 
 The objective is to identify key clinical, pathological, and biological factors associated with patient survival and to evaluate how their effects evolve over time using both classical and extended survival models.
 
-The analysis combines statistical modeling in R with an interactive Power BI dashboard for exploratory data visualization.
+The analysis combines statistical modeling in R.
 
 ---
 
@@ -22,7 +27,7 @@ https://danielemonteverdi02.github.io/breast-cancer-survival-analysis/
 - To compare non-parametric and semi-parametric survival methods
 - To assess the validity of the proportional hazards assumption
 - To model time-dependent effects when necessary
-- To provide an interactive tool for data exploration (Power BI)
+- To provide an interactive tool for data exploration
 
 ---
 
@@ -77,27 +82,6 @@ A derived variable, **LODDS (log-odds of positive lymph nodes)**, is introduced 
 
 ---
 
-## 📊 Dashboard
-The Power BI dashboard allows interactive exploration of:
-
-- Survival differences across clinical subgroups  
-- Hormonal receptor status and survival outcomes  
-- Distribution of key clinical variables  
-- Patient-level filtering and stratification  
-
----
-
 ## 🛠 Tools & Technologies
 - R (survival, survminer, tidyverse, gtsummary, pheatmap)  
-- Power BI  
 - Statistical methods: Kaplan-Meier, Cox models, time-dependent Cox models  
-
----
-
-## 📌 Notes
-This project was developed as an applied statistical exercise in survival analysis, focusing on:
-
-- real-world medical data modeling  
-- handling of non-proportional hazards  
-- model selection and interpretation in clinical contexts  
-- integration of statistical analysis and data visualization  
