@@ -17,7 +17,7 @@ The analysis combines statistical modeling in R.
 ## 📊 Report
 
 👉 View the report here:  
-https://danielemonteverdi02.github.io/breast-cancer-survival-analysis/
+https://danielemonteverdi02.github.io/r-breast-cancer-survival-analysis/
 
 ---
 
